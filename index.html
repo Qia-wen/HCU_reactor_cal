@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>加氢裂化装置工艺参数计算</title>
+<style>
+  :root{
+    --bg:#f1f5f9;
+    --card:#ffffff;
+    --primary:#2563eb;
+    --primary-dark:#1d4ed8;
+    --border:#e2e8f0;
+    --text:#0f172a;
+    --muted:#64748b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:24px 16px 60px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;
+  }
+  .wrap{max-width:1200px;margin:0 auto}
+  header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  h1{font-size:24px;margin:0;letter-spacing:.3px}
+  .sub{color:var(--muted);font-size:20px;margin:4px 0 0}
+  button{
+    font:inherit;font-size:15px;font-weight:700;padding:10px 16px;border-radius:10px;
+    border:1.5px solid var(--primary);background:#fff;color:var(--primary);cursor:pointer;
+  }
+  button:hover{background:#eff6ff}
+
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .panel h2{font-size:14px;margin:0 0 12px;color:var(--primary-dark);font-weight:700;display:flex;align-items:center;gap:8px}
+  .panel h2 .badge{font-size:11px;font-weight:500;background:#eff6ff;color:#3b82f6;padding:1px 8px;border-radius:20px}
+
+  .inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 16px}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:12px;font-weight:600;color:#334155}
+  .field label span{font-weight:400;color:var(--muted)}
+  .input-row{display:flex;align-items:center;gap:6px}
+  input[type=number]{
+    font:inherit;font-size:13.5px;padding:7px 10px;border:1px solid var(--border);
+    border-radius:8px;width:100%;min-width:0;outline:none;background:#fff;color:var(--text);
+  }
+  input[type=number]:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .unit{font-size:14px;color:var(--muted);white-space:nowrap;min-width:50px;text-align:left}
+
+  .results{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  .result-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .result-card h3{font-size:14px;margin:0 0 12px;color:var(--primary-dark);font-weight:700}
+  .res-line{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0}
+  .res-line + .res-line{border-top:1px dashed #e2e8f0}
+  .res-label{font-size:12.5px;color:#475569}
+  .res-value{font-size:22px;font-weight:700;color:var(--primary-dark);font-variant-numeric:tabular-nums}
+  .res-value small{font-size:14px;font-weight:500;color:var(--muted);margin-left:2px}
+  .res-value.empty{color:#cbd5e1;font-size:16px}
+
+  footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--border);color:var(--muted);font-size:14px}
+  footer b{color:#475569}
+  footer ul{margin:6px 0 0;padding-left:18px}
+  footer li{margin:3px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>氢油比 · 单程转化率 · 体积空速 · 氢分压</h1>
+      <p class="sub">加氢裂化反应参数计算（输入数据实时计算）</p>
+    </div>
+    <button id="demo" type="button">载入示例数据</button>
+    </header>
+
+  <!-- 进料数据 -->
+  <section class="panel">
+    <h2>进料数据 <span class="badge">质量流量 kg/h</span></h2>
+    <div class="inputs">
+      <div class="field">
+        <label>新鲜进料量</label>
+        <div class="input-row"><input id="fresh" type="number" step="any" placeholder="例如 20000"><span class="unit">kg/h</span></div>
+      </div>
+      <div class="field">
+        <label>总进料量</label>
+        <div class="input-row"><input id="total" type="number" step="any" placeholder="例如 30000"><span class="unit">kg/h</span></div>
+      </div>
+      <div class="field">
+        <label>尾油出装置量</label>
+        <div class="input-row"><input id="tail" type="number" step="any" placeholder="例如 8000"><span class="unit">kg/h</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 氢气数据 -->
+  <section class="panel">
+    <h2>氢气数据 <span class="badge">Nm³/h</span></h2>
+    <div class="inputs">
+      <div class="field">
+        <label>循环氢流量</label>
+        <div class="input-row"><input id="recycleH2" type="number" step="any" placeholder="例如 30000000"><span class="unit">Nm³/h</span></div>
+      </div>
+      <div class="field">
+        <label>循环氢纯度 <span>（体积分数）</span></label>
+        <div class="input-row"><input id="purity" type="number" step="any" min="0" max="100" placeholder="例如 85"><span class="unit">%</span></div>
+      </div>
+      <div class="field">
+        <label>精制二床冷氢流量</label>
+        <div class="input-row"><input id="coldRef" type="number" step="any" placeholder="例如 2000000"><span class="unit">Nm³/h</span></div>
+      </div>
+      <div class="field">
+        <label>裂化一床冷氢流量</label>
+        <div class="input-row"><input id="coldC1" type="number" step="any" placeholder="例如 1500000"><span class="unit">Nm³/h</span></div>
+      </div>
+      <div class="field">
+        <label>裂化二床冷氢流量</label>
+        <div class="input-row"><input id="coldC2" type="number" step="any" placeholder="例如 1000000"><span class="unit">Nm³/h</span></div>
+      </div>
+      <div class="field">
+        <label>裂化三床冷氢流量</label>
+        <div class="input-row"><input id="coldC3" type="number" step="any" placeholder="例如 500000"><span class="unit">Nm³/h</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 催化剂与补充参数 -->
+  <section class="panel">
+    <h2>催化剂与补充参数 <span class="badge">用于空速 / 分压 / 氢油比</span></h2>
+    <div class="inputs">
+           <div class="field">
+        <label>原料油密度 （新鲜进料）<span>kg/m3</span></label>
+        <div class="input-row"><input id="rho1" type="number" step="any" placeholder="例如 850"><span class="unit">kg/m³</span></div>
+      </div>
+	<div class="field">
+        <label>原料油密度 （循环油/尾油）<span>kg/m3</span></label>
+        <div class="input-row"><input id="rho2" type="number" step="any" placeholder="例如 850"><span class="unit">kg/m³</span></div>
+      </div>
+      <div class="field">
+        <label>系统总压</label>
+        <div class="input-row"><input id="P" type="number" step="any" placeholder="例如 15"><span class="unit">MPa</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 结果区 -->
+  <div class="results">
+    <div class="result-card">
+      <h3>氢油比 <small style="font-weight:400;color:#64748b">Nm³/m³</small></h3>
+      <div class="res-line"><span class="res-label">精制入口</span><span class="res-value" id="r_ho_ref">—</span></div>
+      <div class="res-line"><span class="res-label">裂化入口</span><span class="res-value" id="r_ho_crack_in">—</span></div>
+      <div class="res-line"><span class="res-label">裂化出口</span><span class="res-value" id="r_ho_crack_out">—</span></div>
+    </div>
+
+    <div class="result-card">
+      <h3>单程转化率</h3>
+      <div class="res-line"><span class="res-label">(新鲜进料 − 尾油) ÷ 总进料</span><span class="res-value" id="r_conv">—</span></div>
+    </div>
+
+    <div class="result-card">
+      <h3>体积空速 <small style="font-weight:400;color:#64748b">h⁻¹</small></h3>
+      <div class="res-line"><span class="res-label">精制催化剂</span><span class="res-value" id="r_sv_ref">—</span></div>
+      <div class="res-line"><span class="res-label">裂化催化剂</span><span class="res-value" id="r_sv_crack">—</span></div>
+      <div class="res-line"><span class="res-label">后精制催化剂</span><span class="res-value" id="r_sv_post">—</span></div>
+    </div>
+
+    <div class="result-card">
+      <h3>氢分压 <small style="font-weight:400;color:#64748b">MPa</small></h3>
+      <div class="res-line"><span class="res-label">精制入口</span><span class="res-value" id="r_pp_ref">—</span></div>
+      <div class="res-line"><span class="res-label">裂化入口</span><span class="res-value" id="r_pp_crack_in">—</span></div>
+      <div class="res-line"><span class="res-label">裂化出口</span><span class="res-value" id="r_pp_crack_out">—</span></div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:6px">按循环氢纯度估算，未计氢耗</div>
+    </div>
+  </div>
+
+  <footer>
+    <b>计算说明</b>
+    <ul>
+      <li>氢气体积统一按标准状态计；油体积由质量流量 ÷ 密度换算（实验室化验数据）。</li>
+      <li>氢油比 = 该点纯氢体积流量 ÷ 总进料体积流量；纯氢流量 = 含氢气体流量 × 纯度。</li>
+      <li>精制入口氢气 = 循环氢；裂化入口 = 循环氢 + 精制冷氢；裂化出口 = 裂化入口 + 裂化各床冷氢（忽略氢耗）。</li>
+      <li>单程转化率 = (新鲜进料量 − 尾油出装置量) ÷ 总进料量 × 100%。</li>
+      <li>体积空速 = 进料体积流量÷催化剂装填体积 </li>
+      <li>氢分压 = 系统总压 × 循环氢纯度；各点按相同纯度近似，未考虑沿床层氢耗与产气影响。</li>
+      <li>“裂化各床冷氢流量”如实际为进料体积流量或其他物料，请填 0 或按实际补充氢填写。</li>
+    </ul>
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  function num(id){
+    const v = parseFloat($(id).value);
+    return Number.isFinite(v) ? v : null;
+  }
+
+  function fmt(x, digits){
+    if (!Number.isFinite(x)) return '—';
+    if (Math.abs(x) >= 1e6 || (Math.abs(x) < 1e-3 && x !== 0)) return x.toExponential(2);
+    return x.toFixed(digits);
+  }
+
+  function setVal(id, text, unit){
+    const el = $(id);
+    if (text === null){ el.textContent = '—'; el.classList.add('empty'); return; }
+    el.classList.remove('empty');
+    el.innerHTML = text + (unit ? ' <small>' + unit + '</small>' : '');
+  }
+
+  function calc(){
+    const fresh = num('fresh');
+    const total = num('total');
+    const tail  = num('tail');
+    const rho1   = num('rho1');
+    const rho2   = num('rho2');
+    const P     = num('P');
+    const purityRaw = num('purity');
+
+    const recycleH2 = num('recycleH2');
+    const coldRef = num('coldRef');
+    const coldC1 = num('coldC1');
+    const coldC2 = num('coldC2');
+    const coldC3 = num('coldC3');
+
+    const vRef = 152.78;
+    const vCrack = 113.1;
+    const vPost = 11.42;
+
+    const purity = purityRaw !== null ? purityRaw / 100 : null;
+
+    // 油体积流量 m³/h
+    const oilVol = (fresh !== null && rho1 !== null && rho1 > 0 && total !== null && rho2 !==null && rho2 > 0) ? fresh/ rho1+(total-fresh)/rho2 : null;
+
+    // 纯氢流量 Nm³/h
+    let H2_ref = null, H2_crack_in = null, H2_crack_out = null;
+    if (recycleH2 !== null && purity !== null){
+      H2_ref = recycleH2 * purity;
+      H2_crack_in = H2_ref + (coldRef || 0) * purity;
+      H2_crack_out = H2_crack_in + ((coldC1 || 0) + (coldC2 || 0) + (coldC3 || 0)) * purity;
+    }
+
+    // 氢油比 Nm³/m³
+    if (oilVol !== null && oilVol > 0){
+      setVal('r_ho_ref', H2_ref !== null ? fmt((H2_ref)/oilVol, 1) : null);
+      setVal('r_ho_crack_in', H2_crack_in !== null ? fmt((H2_crack_in)/oilVol, 1) : null);
+      setVal('r_ho_crack_out', H2_crack_out !== null ? fmt((H2_crack_out)/oilVol, 1) : null);
+    } else {
+      setVal('r_ho_ref', null); setVal('r_ho_crack_in', null); setVal('r_ho_crack_out', null);
+    }
+
+    // 单程转化率
+    if (fresh !== null && tail !== null && total !== null && total > 0){
+      setVal('r_conv', fmt((fresh - tail) / total * 100, 1), '%');
+    } else {
+      setVal('r_conv', null);
+    }
+
+    // 体积空速 h⁻¹
+    const calcSV = (v) => (oilVol !== null && v !== null && v > 0) ? fmt(oilVol / v, 3) : null;
+    setVal('r_sv_ref', calcSV(vRef), 'h⁻¹');
+    setVal('r_sv_crack', calcSV(vCrack), 'h⁻¹');
+    setVal('r_sv_post', calcSV(vPost), 'h⁻¹');
+
+    // 氢分压 MPa
+    if (P !== null && purity !== null){
+      const pp = P * purity;
+      setVal('r_pp_ref', fmt(pp, 2), 'MPa');
+      setVal('r_pp_crack_in', fmt(pp, 2), 'MPa');
+      setVal('r_pp_crack_out', fmt(pp, 2), 'MPa');
+    } else {
+      setVal('r_pp_ref', null); setVal('r_pp_crack_in', null); setVal('r_pp_crack_out', null);
+    }
+  }
+
+  document.addEventListener('input', calc);
+  document.addEventListener('change', calc);
+ 
+  // 示例数据
+  $('demo').addEventListener('click', function(){
+    const data = {
+      fresh: 105625,
+      total: 180000,
+      tail: 3000,
+      recycleH2: 209000,
+      purity: 85.5,
+      coldRef: 53,
+      coldC1: 205,
+      coldC2: 9640,
+      coldC3: 10512,
+      vRef: 152.78,
+      vCrack: 113.1,
+      vPost: 11.42,
+      rho1: 867.8,
+      rho2: 828.7,
+      P: 10.45
+    };
+    for (const k in data) if ($(k)) $(k).value = data[k];
+    calc();
+  });
+
+  calc();
+})();
+</script>
+</body>
+</html>
